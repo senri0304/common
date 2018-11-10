@@ -6,16 +6,18 @@ import pandas as pd
 import numpy as np
 
 # Get display informations
+use_scr = 0
 platform = pyglet.window.get_platform()
 display = platform.get_default_display()      
 screens = display.get_screens()
 win = pyglet.window.Window(style=pyglet.window.Window.WINDOW_STYLE_BORDERLESS)
-win.set_fullscreen(fullscreen = True, screen = screens[1]) # Present secondary display
+win.set_fullscreen(fullscreen =  True, screen = screens[use_scr]) # Present secondary display
 #win.set_exclusive_mouse() # Exclude mouse pointer
 key = pyglet.window.key
 
 #------------------------------------------------------------------------
-rept = 1 # Input repeat counts
+rept = 1
+# Input repeat counts
 data = pd.read_csv("eggs.csv") # Load the condition file
 test_x = -1 # control line is presented right when positive number
 rotate_oth = 0
@@ -30,10 +32,10 @@ list_b = []
 deg1 = 42.8 # 1 deg = 43 pix at LEDCinemaDisplay made by Apple
 am42 = 30.0 # 42 arcmin = 30 pix
 iso = 6.8
-cntx = screens[1].width/2 #Store center of screen about x positon
-cnty = screens[1].height/8 #Store center of screen about y position
+cntx = screens[use_scr].width/2 #Store center of screen about x positon
+cnty = screens[use_scr].height/8 #Store center of screen about y position
 draw_objects = [] # 描画対象リスト
-end_routine = False # Routine status to be exitable or not
+exitance = False # Routine status to be exitable or not
 tc = 0 # Count transients
 tcs = [] # Store transients per trials
 trial_starts = [] # Store time when trial starts
@@ -41,6 +43,8 @@ kud_list = [] # Store durations of key pressed
 cdt = [] #Store sum(kud), cumulative reaction time on a trial.
 mdt = []
 dtstd = []
+exitance = True
+n = 0
 
 # Load sound resource
 p_sound = pyglet.resource.media("button57.mp3", streaming = False)
@@ -78,20 +82,21 @@ class DrawStim():
 # A getting key response function
 class key_resp(object):
     def on_key_press(self, symbol, modifiers):
-        global tc, end_routine
-        if end_routine == False and symbol == key.SPACE:
+        global tc, exitance, trial_start
+        if exitance == False and symbol == key.SPACE:
             kd.append(time.time())
             tc = tc + 1
-        if end_routine == True and symbol == key.B:
-            end_routine = False
+        if exitance == True and symbol == key.B:
             p_sound.play()
-            pyglet.app.exit()
+            exitance = False
+            schedule()
+            trial_start = time.time()
         if symbol == key.ESCAPE:
             win.close()
             pyglet.app.exit()
     def on_key_release(self, symbol, modifiers):
         global tc
-        if end_routine == False and symbol == key.SPACE:
+        if exitance == False and symbol == key.SPACE:
             ku.append(time.time())
             tc = tc + 1
 resp_handler = key_resp()
@@ -106,24 +111,55 @@ rfixw = DrawStim(15, 5, cntx + deg1*iso + deg1*0.7071068, cnty - deg1*0.7071068,
 
 # Store objects into draw_objects
 def fixer():
+    global right_half, left_half
     draw_objects.append(bsl)
     draw_objects.append(bsr)
     draw_objects.append(lfixv)
     draw_objects.append(lfixw)
     draw_objects.append(rfixv)
     draw_objects.append(rfixw)
+    draw_objects.append(right_half)
+    draw_objects.append(left_half)
 
 # A end routine function
-def end_rou(dt):
-    global end_routine
-    end_routine = True
+def exit_routine(dt):
+    global exitance
+    exitance = True
     beep_sound.play()
-    # Display fixation
+    pyglet.app.exit()
+
+@win.event
+def on_draw():
+    # Refresh window
+    win.clear()
+    # 描画対象のオブジェクトを描画する
+    for draw_object in draw_objects:
+        draw_object.draw()
+
+# Remove stimulus
+def delete(dt):
+    global n, dl
+    del draw_objects[:]
+    p_sound.play()
+    # Check the experiment continue or break
+    if n == dl - 1:
+        pyglet.app.exit()
+
+def next_routine(dt):
+    global n, dat, right_half, left_half
+    right_half = DrawStim(5, am42, cntx + deg1*iso*test_x, cnty, 0, 0, 0, 0)
+    left_half = DrawStim(5, am42, cntx + deg1*iso*-test_x - dat[n,0], cnty , 0, 0, 0, 0)
     fixer()
+
+def schedule(): # Scheduling flow
+    pyglet.clock.schedule_once(delete, 5.0)
+    pyglet.clock.schedule_once(next_routine, 5.9)
+    pyglet.clock.schedule_once(exit_routine, 6.0)
 
 # Store the start time
 start = time.time()
-fixer()
+win.push_handlers(resp_handler)
+#set_handler()
 
 #----------------- start loop -----------------------------
 # Get variables per trial from csv
@@ -132,6 +168,11 @@ for j in range(rept):
     dat = pd.concat([dat, camp], axis=0, ignore_index=True)
 dat = dat.values
 dl = dat.shape[0]
+
+# Set up polygon for first routine
+right_half = DrawStim(5, am42, cntx + deg1*iso*test_x, cnty, 0, 0, 0, 0)
+left_half = DrawStim(5, am42, cntx + deg1*iso*-test_x - dat[0,0], cnty , 0, 0, 0, 0)
+
 for i in range(dl):
     tc = 0 #Count transients
     ku = deque([]) #Store unix time when key up
@@ -142,49 +183,9 @@ for i in range(dl):
     colb = da[1] # Store variance of index [i], column 1
     list_a.append(cola)
     list_b.append(colb)
+    n += 1
     
-    # Set up polygon for stimulus
-    right_half = DrawStim(5, am42, cntx + deg1*iso*test_x, cnty, 0, 0, 0, 0)
-    left_half = DrawStim(5, am42, cntx + deg1*iso*-test_x - cola, cnty , 0, 0, 0, 0)
-    
-    # Add stimulus onto dispaly
-    def replace(dt):
-        draw_objects.append(right_half)
-        draw_objects.append(left_half)
-    
-    @win.event
-    def on_draw():
-        # Refresh window
-        win.clear()
-        
-        # 描画対象のオブジェクトを描画する
-        for draw_object in draw_objects:
-            draw_object.draw()
-    
-    # Event handler handlers
-    def set_handler(dt):
-        win.push_handlers(resp_handler)
-    def remove_handler(dt):
-        win.remove_handlers(resp_handler)
-    
-    # Remove stimulus
-    def delete(dt):
-        del draw_objects[:]
-        p_sound.play()
-        # Check the experiment continue or break
-        if i == dl - 1:
-            pyglet.app.exit()
-    
-    # Scheduling flow
-    pyglet.clock.schedule_once(remove_handler, 0.0)
-    pyglet.clock.schedule_once(replace, 1.0)
-    pyglet.clock.schedule_once(set_handler, 1.0)
-    pyglet.clock.schedule_once(remove_handler, 31.0)
-    pyglet.clock.schedule_once(delete, 31.0)
-    pyglet.clock.schedule_once(end_rou, 61.0)
-    pyglet.clock.schedule_once(set_handler, 61.0)
-    
-    trial_start = time.time()
+    fixer()
     
     pyglet.app.run()
     
