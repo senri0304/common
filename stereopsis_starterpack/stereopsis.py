@@ -5,6 +5,14 @@ from collections import deque
 import pandas as pd
 import numpy as np
 
+#------------------------------------------------------------------------
+rept = 3
+# Input repeat counts
+data = pd.read_csv("eggs.csv") # Load the condition file
+test_x = -1 # control line is presented right when positive number
+rotate_oth = 0
+#------------------------------------------------------------------------
+
 # Get display informations
 use_scr = 0
 platform = pyglet.window.get_platform()
@@ -14,14 +22,6 @@ win = pyglet.window.Window(style=pyglet.window.Window.WINDOW_STYLE_BORDERLESS)
 win.set_fullscreen(fullscreen =  True, screen = screens[use_scr]) # Present secondary display
 #win.set_exclusive_mouse() # Exclude mouse pointer
 key = pyglet.window.key
-
-#------------------------------------------------------------------------
-rept = 1
-# Input repeat counts
-data = pd.read_csv("eggs.csv") # Load the condition file
-test_x = -1 # control line is presented right when positive number
-rotate_oth = 0
-#------------------------------------------------------------------------
 
 # Load variable conditions
 header = data.columns # Store variance name
@@ -145,16 +145,16 @@ def delete(dt):
     if n == dl - 1:
         pyglet.app.exit()
 
-def next_routine(dt):
+def prepare_routine(dt):
     global n, dat, right_half, left_half
     right_half = DrawStim(5, am42, cntx + deg1*iso*test_x, cnty, 0, 0, 0, 0)
     left_half = DrawStim(5, am42, cntx + deg1*iso*-test_x - dat[n,0], cnty , 0, 0, 0, 0)
     fixer()
 
 def schedule(): # Scheduling flow
-    pyglet.clock.schedule_once(delete, 5.0)
-    pyglet.clock.schedule_once(next_routine, 5.9)
-    pyglet.clock.schedule_once(exit_routine, 6.0)
+    pyglet.clock.schedule_once(delete, 30.0)
+    pyglet.clock.schedule_once(prepare_routine, 60.0)
+    pyglet.clock.schedule_once(exit_routine, 60.0)
 
 # Store the start time
 start = time.time()
@@ -192,7 +192,7 @@ for i in range(dl):
     trial_end = time.time()
     
     # Get results
-    ku.append(trial_start + 31.0)
+    ku.append(trial_start + 30.0)
     while len(kd) > 0:
         kud.append(ku.popleft() - kd.popleft() + 0) # list up key_press_duration
     kud_list.append(str(kud))
