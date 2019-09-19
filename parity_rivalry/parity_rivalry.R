@@ -2,7 +2,7 @@
 files = list.files('./data',full.names=T)
 f = length(files)
 
-si = gsub(".*(.)2018.*", "\\1", files)
+si = gsub(".*(.)DATE.*", "\\1", files)
 n = length(table(si))
 
 # Load data and store
@@ -19,9 +19,9 @@ dat$sub = dat$si
 dat$si = NULL
 
 # Reshape data for anova
-ano = aggregate(x=dat$cdt, by=dat[c("doty","sub")], FUN=mean)
+ano = aggregate(x=dat$cdt, by=dat[c("size","sub")], FUN=mean)
 library("reshape2")
-dc = dcast(ano, sub ~ doty, mean, value.var="x")
+dc = dcast(ano, sub ~ size, mean, value.var="x")
 dc = subset(dc, select = -sub)
 ddd = ncol(dc)
 
@@ -40,14 +40,14 @@ se = sd/sqrt(n)
 # Plot indivisual data
 par(mfrow=c(2,3))
 for (k in 1:n){
-  camp = subset(dat, dat$sub == si[k], c("doty", "cdt"))
+  camp = subset(dat, dat$sub == si[k], c("size", "cdt"))
   plot(camp, xlim=c(0,21), ylim=c(0,15), type = "p",xlab="vertical disparity(min of arc)", ylab="cumulative disapperance times(sec)")
   par(new=T)
-  plot(aggregate(x = camp$cdt, by=camp["doty"], FUN=mean), type = "l", col="blue", xlim=c(0,21), ylim=c(0,15), ylab="", xlab="")
+  plot(aggregate(x = camp$cdt, by=camp["size"], FUN=mean), type = "l", col="blue", xlim=c(0,21), ylim=c(0,15), ylab="", xlab="")
   par(new=F)
 }
 
 # Plot cdt with error bar
-cdt = aggregate(x=dat$cdt, by=dat["doty"],FUN=mean)
+cdt = aggregate(x=dat$cdt, by=dat["size"],FUN=mean)
 plot(cdt, xlim=c(0,21), ylim=c(0,15), type="b", xlab="vertical disparity(min of arc)", ylab="mean of cdt(sec)")
-arrows(cdt$doty, cdt$x-se, cdt$doty, cdt$x+se, length=0.05, angle=90, code=3)
+arrows(cdt$size, cdt$x-se, cdt$size, cdt$x+se, length=0.05, angle=90, code=3)
