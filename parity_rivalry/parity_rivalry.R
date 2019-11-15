@@ -1,53 +1,36 @@
 # List up files
-files = list.files('./data',full.names=T)
+files = list.files('./replication/parity_rivalry/data',full.names=T)
 f = length(files)
 
-si = gsub(".*(.)DATE.*", "\\1", files)
+si = gsub(".*(..)2019.*","\\1", files)
 n = length(table(si))
+usi = unique(si)
 
 # Load data and store
 temp = read.csv(files[1])
-temp$si = si[1]
-m = nrow(temp)
+temp$sub = si[1]
+temp$sn <- 1 
 for (i in 2:f) {
   d = read.csv(files[[i]])
-  d$si = si[i]
+  d$sub = si[i]
+  d$sn <- i
   temp = rbind(temp, d)
-  }
-dat = temp
-dat$sub = dat$si
-dat$si = NULL
-
-# Reshape data for anova
-ano = aggregate(x=dat$cdt, by=dat[c("size","sub")], FUN=mean)
-library("reshape2")
-dc = dcast(ano, sub ~ size, mean, value.var="x")
-dc = subset(dc, select = -sub)
-ddd = ncol(dc)
-
-# Calculate SD
-sd = sd(dc[,1])
-for (l in 2:ddd) {sd = rbind(sd, sd(dc[,l]))}
-sd = cbind(sd, dat$sub)
-
-# Calculate SE
-se = sd/sqrt(n)
-
-# Anovakun
-#source("anovakun_481.txt", encoding = "CP932")
-#anovakun(dc,"sA", 6, peta=T)
+}
 
 # Plot indivisual data
 par(mfrow=c(2,3))
-for (k in 1:n){
-  camp = subset(dat, dat$sub == si[k], c("size", "cdt"))
-  plot(camp, xlim=c(0,21), ylim=c(0,15), type = "p",xlab="vertical disparity(min of arc)", ylab="cumulative disapperance times(sec)")
+#for (l in 1:n){
+for (i in 1:n){
+  camp = subset(temp, temp$sub == usi[i], c("visual_angle", "cdt"))
+#    camp = subset(temp, temp$sub == usi[l] and temp$sn == [i] , c("visual_angle", "cdt", "sn"))
+#    plot(x=camp$visual_angle, y=camp$cdt, xlim=c(0,3), ylim=c(0,30), type="p", xlab="stimulus_size(deg)", ylab="cdt(sec)", main=toupper(usi[l]), col="red")
+  plot(camp, xlim=c(0,3), ylim=c(0,30), type="p", xlab="stimulus_size(deg)", ylab="cdt(sec)", main=toupper(usi[i]))
   par(new=T)
-  plot(aggregate(x = camp$cdt, by=camp["size"], FUN=mean), type = "l", col="blue", xlim=c(0,21), ylim=c(0,15), ylab="", xlab="")
+  plot(aggregate(x=camp$cdt, by=camp["visual_angle"], FUN=mean), type="l", col="blue", xlim=c(0,3), ylim=c(0,30), xlab="", ylab="")
   par(new=F)
 }
-
-# Plot cdt with error bar
-cdt = aggregate(x=dat$cdt, by=dat["size"],FUN=mean)
-plot(cdt, xlim=c(0,21), ylim=c(0,15), type="b", xlab="vertical disparity(min of arc)", ylab="mean of cdt(sec)")
-arrows(cdt$size, cdt$x-se, cdt$size, cdt$x+se, length=0.05, angle=90, code=3)
+# Plot all data
+plot(x=temp$visual_angle, y=temp$cdt, xlim=c(0,3), ylim=c(0,30), type="p", xlab="stimulus_size(deg)", ylab="cumultive disapperance times(sec)")
+par(new=T)
+plot(aggregate(x=temp$cdt, by=temp["visual_angle"], FUN=mean), type="l", col="blue", xlim=c(0,3), ylim=c(0,30), xlab="", ylab="")
+par(new=F)
